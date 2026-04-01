@@ -1,45 +1,42 @@
 import os
 import json
-import requests
-import hashlib
-import base64
 from dotenv import load_dotenv
+from iracingdataapi.client import irDataClient
 
 # Read your .env file and loads values
 load_dotenv() 
 
-# Collect email and password
+# Collect email and password from .env
 email = os.getenv("IRACING_EMAIL")
 password = os.getenv("IRACING_PASSWORD")
 
-# Create credentials for iRacing, hash, Base64 encode it and then decode back to UTF-8 
-cred = password + email.lower()
-cred_bytes = cred.encode("utf-8")
-hashed_cred = hashlib.sha256(cred_bytes).digest()
-encoded_cred = base64.b64encode(hashed_cred).decode("utf-8")
-
 print(f"email: {email}")
 print(f"password: {password}")
-print(f"encoded_cred: {encoded_cred}")
 
-def get_session(userEmail, userCred):
-    session = requests.Session()
+def get_client():
 
-    response = session.post(
-        "https://oauth.iracing.com/oauth2/token",
-        json={
-            "grant_type": "password", 
-            "email": userEmail, 
-            "password": userCred}
-    )   
+    idc = irDataClient(username=email, password=password, use_pydantic=True)
 
-    print(f"Auth status: {response.status_code}")
-    print(f"Auth response: {response.json()}")
-
-    print("Connected!")
-    return session
+    return idc
 
 
 if __name__ == "__main__":
-    session = get_session(email, encoded_cred)
-    print(f"Session type: {type(session)}")
+    import hashlib
+    import base64
+    import requests
+
+    # Build the hash the same way we did before
+    cred = password + email.lower()
+    cred_bytes = cred.encode("utf-8")
+    hashed = hashlib.sha256(cred_bytes).digest()
+    encoded = base64.b64encode(hashed).decode("utf-8")
+
+    # Hit the auth endpoint directly
+    session = requests.Session()
+    response = session.post(
+        "https://members-ng.iracing.com/auth",
+        json={"email": email, "password": encoded}
+    )
+
+    print(f"Status code: {response.status_code}")
+    print(f"Response text: {response.text}")
